@@ -10,8 +10,10 @@ var http = require('http')
 var https = require('https')
 var url = require('url')
 var stringDecoder = require('string_decoder').StringDecoder
-var config = require('./config')
+var config = require('./lib/config')
+var handlers = require('./lib/handlers')
 var fs = require('fs')
+var helpers = require('./lib/helpers')
 
 // Morphing the HTTP server
 var httpServer = http.createServer(function(req, res) {
@@ -35,7 +37,7 @@ var unifiedServer = function(req, res) {
     
     // get the payloads
     var decoder = new stringDecoder('utf-8')
-    var buffer = ""
+    var buffer = ''
     req.on('data', function(dat) {
         buffer += decoder.write(dat)
     })
@@ -49,9 +51,9 @@ var unifiedServer = function(req, res) {
         var reqData = {
             'trimmedPath':trimmedUrl,
             'queryString': url.parse(req.url, true).query,
-            'method': req.method.toUpperCase(),
+            'method': req.method.toLowerCase(),
             'headers': req.headers,
-            'payload': buffer
+            'payload': helpers.parseJsonToObject(buffer)
         }
         
         // Choose the route handler
@@ -71,6 +73,7 @@ var unifiedServer = function(req, res) {
             res.end(payloadStringToUser)
             
             // Log data
+            // eslint-disable-next-line
             console.log("Returned data:\n",{"StatusCode": stsCode, "PayloadReturned": payloadStringToUser})
         })
     })
@@ -80,26 +83,19 @@ var unifiedServer = function(req, res) {
 // HTTP server init
 httpServer.listen(config.httpPort, function() {
     // Alert admin about the server's state
+    // eslint-disable-next-line
     console.log(`HTTP server is now live at port ${config.httpPort}.`)
 })
 
 // HTTPS server init
 httpsServer.listen(config.httpsPort, function() {
     // Alert admin about the server's state
+    // eslint-disable-next-line
     console.log(`HTTPS server is now live at port ${config.httpsPort}`)
 })
 
-// Routes handler
-var handlers = {
-    ping: function(data, callback) {
-        callback(200)
-    },
-    notFound: function(data, callback) {
-        callback(404)
-    }
-}
-
 // Routes Controller
 var router = {
-    ping: handlers.ping
+    ping: handlers.ping,
+    users: handlers.users
 }
